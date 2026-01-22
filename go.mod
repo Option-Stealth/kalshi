@@ -1,4 +1,4 @@
-module github.com/ammario/kalshi
+module github.com/Option-Stealth/kalshi
 
 go 1.20
 
