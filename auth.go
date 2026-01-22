@@ -1,47 +1,37 @@
 package kalshi
 
-import "context"
+import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"fmt"
+)
 
-// LoginRequest is described here:
-// https://trading-api.readme.io/reference/login.
-type LoginRequest struct {
-	Email    string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
-}
+var (
+	ErrInvalidPEMBlock = errors.New("failed to parse PEM block")
+	ErrEncryptedKey    = errors.New("private key is encrypted but no password provided")
+	ErrKeyDecryption   = errors.New("failed to decrypt private key")
+)
 
-// LoginResponse is described here:
-// https://trading-api.readme.io/reference/login.
-type LoginResponse struct {
-	Token  string `json:"token,omitempty"`
-	UserID string `json:"user_id,omitempty"`
-}
-
-// Login is described here:
-// https://trading-api.readme.io/reference/login.
-//
-// The Client will stay authenticated after Login is called since it stores the
-// token in the cookie state.
-func (c *Client) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
-	var resp LoginResponse
-	err := c.request(ctx, request{
-		Method:       "POST",
-		Endpoint:     "login",
-		JSONRequest:  req,
-		JSONResponse: &resp,
-	})
-	if err != nil {
-		return nil, err
+// LoadPrivateKeyFromPEM loads an RSA private key from PEM-encoded data.
+// If the key is encrypted, a password must be provided.
+func LoadPrivateKeyFromPEM(pemData []byte, password string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, ErrInvalidPEMBlock
 	}
-	return &resp, nil
-}
 
-// Logout is described here:
-// https://trading-api.readme.io/reference/logout.
-func (c *Client) Logout(ctx context.Context) error {
-	return c.request(ctx, request{
-		Method:       "POST",
-		Endpoint:     "logout",
-		JSONRequest:  nil,
-		JSONResponse: nil,
-	})
+	if x509.IsEncryptedPEMBlock(block) {
+		if password == "" {
+			return nil, ErrEncryptedKey
+		}
+		decrypted, err := x509.DecryptPEMBlock(block, []byte(password))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrKeyDecryption, err)
+		}
+		return x509.ParsePKCS1PrivateKey(decrypted)
+	}
+
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }

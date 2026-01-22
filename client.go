@@ -3,6 +3,11 @@ package kalshi
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -30,7 +36,7 @@ func (c Cents) String() string {
 	return fmt.Sprintf("$%.2f", dollars)
 }
 
-// Client must be instantiated via New.
+// Client must be instantiated via NewClient.
 type Client struct {
 	// BaseURL is one of APIDemoURL or APIProdURL.
 	BaseURL string
@@ -39,6 +45,8 @@ type Client struct {
 	WriteRatelimit *rate.Limiter
 	ReadRateLimit  *rate.Limiter
 
+	keyID      string
+	privateKey *rsa.PrivateKey
 	httpClient *http.Client
 }
 
@@ -119,14 +127,6 @@ func jsonRequestHeaders(
 		fmt.Printf("REQUEST DUMP\n%s\n", dumpErr)
 	}
 
-	if client.Jar != nil {
-		u, err := url.Parse(reqURL)
-		if err != nil {
-			return err
-		}
-		client.Jar.SetCookies(u, resp.Cookies())
-	}
-
 	if jsonResp != nil {
 		err = json.Unmarshal(respBodyByt, jsonResp)
 		if err != nil {
@@ -164,13 +164,56 @@ func (c *Client) request(
 		}
 	}
 
+	path := r.Endpoint
+	if u.RawQuery != "" {
+		path = r.Endpoint + "?" + u.RawQuery
+	}
+	headers := c.requestHeaders(r.Method, path)
+	httpHeaders := make(http.Header)
+	for k, v := range headers {
+		httpHeaders.Set(k, v)
+	}
+
 	return jsonRequestHeaders(
 		ctx,
 		c.httpClient,
-		nil,
+		httpHeaders,
 		r.Method,
 		u.String(), r.JSONRequest, r.JSONResponse,
 	)
+}
+
+func (c *Client) requestHeaders(method, path string) map[string]string {
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+
+	pathParts := strings.SplitN(path, "?", 2)
+	msgString := timestamp + method + pathParts[0]
+	signature, err := c.signPSSText(msgString)
+	if err != nil {
+		// In production code, this should be handled more gracefully
+		panic(fmt.Sprintf("failed to sign request: %v", err))
+	}
+
+	return map[string]string{
+		"KALSHI-ACCESS-KEY":       c.keyID,
+		"KALSHI-ACCESS-SIGNATURE": signature,
+		"KALSHI-ACCESS-TIMESTAMP": timestamp,
+	}
+}
+
+// signPSSText signs the given text using RSA-PSS.
+func (c *Client) signPSSText(text string) (string, error) {
+	hash := sha256.Sum256([]byte(text))
+
+	signature, err := rsa.SignPSS(rand.Reader, c.privateKey, crypto.SHA256, hash[:], &rsa.PSSOptions{
+		SaltLength: rsa.PSSSaltLengthEqualsHash,
+		Hash:       crypto.SHA256,
+	})
+	if err != nil {
+		return "", fmt.Errorf("RSA sign PSS failed: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(signature), nil
 }
 
 // Timestamp represents a POSIX Timestamp in seconds.
@@ -197,19 +240,14 @@ func basicRateLimit() *rate.Limiter {
 	return rate.NewLimiter(rate.Every(time.Second), 10)
 }
 
-// New creates a new Kalshi client. Login must be called to authenticate the
-// the client before any other request.
-func New(baseURL string) *Client {
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		panic(err)
-	}
-
+// NewClient creates a new Kalshi client with RSA key-based authentication.
+// The client is ready to use immediately without needing to call Login.
+func NewClient(keyID string, privateKey *rsa.PrivateKey, baseURL string) *Client {
 	c := &Client{
-		httpClient: &http.Client{
-			Jar: jar,
-		},
-		BaseURL: baseURL,
+		httpClient: &http.Client{},
+		BaseURL:    baseURL,
+		keyID:      keyID,
+		privateKey: privateKey,
 		// See https://trading-api.readme.io/reference/tiers-and-rate-limits.
 		// Default to Basic access.
 		WriteRatelimit: basicRateLimit(),
@@ -217,6 +255,23 @@ func New(baseURL string) *Client {
 	}
 
 	return c
+}
+
+// Deprecated: New creates a client without authentication. Use NewClient instead.
+// This function is kept for backward compatibility but will not work with the API.
+func New(baseURL string) *Client {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		panic(err)
+	}
+	return &Client{
+		httpClient: &http.Client{
+			Jar: jar,
+		},
+		BaseURL:        baseURL,
+		WriteRatelimit: basicRateLimit(),
+		ReadRateLimit:  basicRateLimit(),
+	}
 }
 
 // Time is a time.Time that tolerates additional '"' characters.

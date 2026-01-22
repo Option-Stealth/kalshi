@@ -14,31 +14,37 @@ var rateLimit = rate.NewLimiter(rate.Every(time.Second), 10-1)
 
 func testClient(t *testing.T) *Client {
 	const (
-		emailEnv = "KALSHI_EMAIL"
-		passEnv  = "KALSHI_PASSWORD"
+		keyIDEnv         = "KALSHI_KEY_ID"
+		privateKeyEnv    = "KALSHI_PRIVATE_KEY_PATH"
+		privateKeyPEMEnv = "KALSHI_PRIVATE_KEY_PEM"
 	)
 
 	ctx := context.Background()
+	_ = ctx // Keep for future use
 
-	email, ok := os.LookupEnv(emailEnv)
+	keyID, ok := os.LookupEnv(keyIDEnv)
 	if !ok {
-		t.Fatalf("no $%s provided", emailEnv)
-	}
-	password, ok := os.LookupEnv(passEnv)
-	if !ok {
-		t.Fatalf("no $%s provided", passEnv)
+		t.Fatalf("no $%s provided", keyIDEnv)
 	}
 
-	c := New(APIDemoURL)
+	var pemData []byte
+	var err error
+
+	// Try to load from file path first
+	if keyPath, ok := os.LookupEnv(privateKeyEnv); ok {
+		pemData, err = os.ReadFile(keyPath)
+		require.NoError(t, err, "failed to read private key file")
+	} else if pemStr, ok := os.LookupEnv(privateKeyPEMEnv); ok {
+		// Otherwise use PEM string directly
+		pemData = []byte(pemStr)
+	} else {
+		t.Fatalf("no $%s or $%s provided", privateKeyEnv, privateKeyPEMEnv)
+	}
+
+	privateKey, err := LoadPrivateKeyFromPEM(pemData, "")
+	require.NoError(t, err, "failed to load private key")
+
+	c := NewClient(keyID, privateKey, APIDemoURL)
 	c.WriteRatelimit = rateLimit
-	_, err := c.Login(ctx, LoginRequest{
-		Email:    email,
-		Password: password,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		// Logout will fail during the Logout test.
-		_ = c.Logout(ctx)
-	})
 	return c
 }
