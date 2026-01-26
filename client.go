@@ -26,7 +26,7 @@ import (
 
 const (
 	APIDemoURL = "https://demo-api.kalshi.co/trade-api/v2/"
-	APIProdURL = "https://trading-api.kalshi.com/trade-api/v2/"
+	APIProdURL = "https://demo-api.kalshi.co/trade-api/v2/"
 )
 
 type Cents int
@@ -75,12 +75,18 @@ func jsonRequestHeaders(
 	method string, reqURL string,
 	jsonReq any, jsonResp any,
 ) error {
-	reqBodyByt, err := json.Marshal(jsonReq)
-	if err != nil {
-		return err
+	var reqBodyByt []byte
+	var err error
+	var body io.Reader
+	if jsonReq != nil {
+		reqBodyByt, err = json.Marshal(jsonReq)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(reqBodyByt)
 	}
 
-	req, err := http.NewRequest(method, reqURL, bytes.NewReader(reqBodyByt))
+	req, err := http.NewRequest(method, reqURL, body)
 	if err != nil {
 		return err
 	}
@@ -164,9 +170,9 @@ func (c *Client) request(
 		}
 	}
 
-	path := r.Endpoint
+	path := u.Path
 	if u.RawQuery != "" {
-		path = r.Endpoint + "?" + u.RawQuery
+		path = path + "?" + u.RawQuery
 	}
 	headers := c.requestHeaders(r.Method, path)
 	httpHeaders := make(http.Header)
