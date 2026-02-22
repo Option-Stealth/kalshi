@@ -144,7 +144,7 @@ func TestFeed(t *testing.T) {
 		require.NotNil(t, gotBook)
 
 		var (
-			wantBook *OrderBook
+			wantBook *MarketOrderBookResponse
 			err      error
 		)
 
@@ -155,12 +155,12 @@ func TestFeed(t *testing.T) {
 			wantBook, err = client.MarketOrderBook(ctx, marketTicker)
 			require.NoError(t, err)
 
-			return reflect.DeepEqual(wantBook.NoBids, gotBook.NoBids) && reflect.DeepEqual(wantBook.YesBids, gotBook.YesBids)
+			return reflect.DeepEqual(wantBook.OrderBook.NoBids, gotBook.NoBids) && reflect.DeepEqual(wantBook.OrderBook.YesBids, gotBook.YesBids)
 		}, time.Second*10, time.Second)
 
 		// This gives a pretty error.
-		require.Equal(t, wantBook.YesBids, gotBook.YesBids, "Yes")
-		require.Equal(t, wantBook.NoBids, gotBook.NoBids, "No")
+		require.Equal(t, wantBook.OrderBook.YesBids, gotBook.YesBids, "Yes")
+		require.Equal(t, wantBook.OrderBook.NoBids, gotBook.NoBids, "No")
 	}
 
 	longStreamOrSkip := func(t *testing.T) {

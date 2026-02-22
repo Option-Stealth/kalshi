@@ -30,6 +30,44 @@ func (o *OrderBookBid) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// OrderBookBidDollar represents a bid level with a dollar price string and integer quantity,
+// serialized as ["0.1500", 100].
+type OrderBookBidDollar struct {
+	Price    string
+	Quantity int
+}
+
+func (o *OrderBookBidDollar) UnmarshalJSON(b []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if len(raw) != 2 {
+		return fmt.Errorf("orderbook dollar entry: expected 2 elements, got %d", len(raw))
+	}
+	if err := json.Unmarshal(raw[0], &o.Price); err != nil {
+		return err
+	}
+	return json.Unmarshal(raw[1], &o.Quantity)
+}
+
+// OrderBookBidFp represents a fractional bid level with dollar price and quantity both as strings,
+// serialized as ["0.1500", "100.00"].
+type OrderBookBidFp struct {
+	Price    string
+	Quantity string
+}
+
+func (o *OrderBookBidFp) UnmarshalJSON(b []byte) error {
+	var raw [2]string
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	o.Price = raw[0]
+	o.Quantity = raw[1]
+	return nil
+}
+
 // YesLiquidity returns the total sum required to buy all available
 // Yes contracts on the market.
 func (b OrderBook) YesLiquidity() Cents {
@@ -163,6 +201,18 @@ func conservativeRound(a float64) int {
 // Detailed documentation can be found here:
 // https://trading-api.readme.io/reference/getmarketorderbook.
 type OrderBook struct {
-	YesBids OrderBookBids `json:"yes"`
-	NoBids  OrderBookBids `json:"no"`
+	YesBids        OrderBookBids        `json:"yes"`
+	NoBids         OrderBookBids        `json:"no"`
+	YesBidsDollars []OrderBookBidDollar `json:"yes_dollars"`
+	NoBidsDollars  []OrderBookBidDollar `json:"no_dollars"`
+}
+
+// MarketOrderBookResponse is described here:
+// https://trading-api.readme.io/reference/getmarketorderbook.
+type MarketOrderBookResponse struct {
+	OrderBook   OrderBook `json:"orderbook"`
+	OrderBookFp struct {
+		YesBidsDollars []OrderBookBidFp `json:"yes_dollars"`
+		NoBidsDollars  []OrderBookBidFp `json:"no_dollars"`
+	} `json:"orderbook_fp"`
 }

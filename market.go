@@ -94,33 +94,83 @@ type MarketsRequest struct {
 // Market is described here:
 // https://trading-api.readme.io/reference/getmarkets.
 type Market struct {
-	Ticker          string    `json:"ticker"`
-	EventTicker     string    `json:"event_ticker"`
-	Subtitle        string    `json:"subtitle"`
-	OpenTime        time.Time `json:"open_time"`
-	CloseTime       time.Time `json:"close_time"`
-	ExpirationTime  time.Time `json:"expiration_time"`
-	Status          string    `json:"status"`
-	YesBid          Cents     `json:"yes_bid"`
-	YesAsk          Cents     `json:"yes_ask"`
-	NoBid           Cents     `json:"no_bid"`
-	NoAsk           Cents     `json:"no_ask"`
-	LastPrice       Cents     `json:"last_price"`
-	PreviousYesBid  Cents     `json:"previous_yes_bid"`
-	PreviousYesAsk  Cents     `json:"previous_yes_ask"`
-	PreviousPrice   Cents     `json:"previous_price"`
-	Volume          int       `json:"volume"`
-	Volume24H       int       `json:"volume_24h"`
-	Liquidity       Cents     `json:"liquidity"`
-	OpenInterest    int       `json:"open_interest"`
-	Result          string    `json:"result"`
-	CanCloseEarly   bool      `json:"can_close_early"`
-	ExpirationValue string    `json:"expiration_value"`
-	Category        string    `json:"category"`
-	RiskLimit       Cents     `json:"risk_limit_cents"`
-	StrikeType      string    `json:"strike_type"`
-	FloorStrike     float64   `json:"floor_strike,omitempty"`
-	CapStrike       float64   `json:"cap_strike,omitempty"`
+	Ticker                   string    `json:"ticker"`
+	EventTicker              string    `json:"event_ticker"`
+	MarketType               string    `json:"market_type"`
+	Title                    string    `json:"title"`
+	Subtitle                 string    `json:"subtitle"`
+	YesSubTitle              string    `json:"yes_sub_title"`
+	NoSubTitle               string    `json:"no_sub_title"`
+	CreatedTime              time.Time `json:"created_time"`
+	UpdatedTime              time.Time `json:"updated_time"`
+	OpenTime                 time.Time `json:"open_time"`
+	CloseTime                time.Time `json:"close_time"`
+	ExpirationTime           time.Time `json:"expiration_time"`
+	LatestExpirationTime     time.Time `json:"latest_expiration_time"`
+	ExpectedExpirationTime   time.Time `json:"expected_expiration_time"`
+	SettlementTimerSeconds   int       `json:"settlement_timer_seconds"`
+	Status                   string    `json:"status"`
+	ResponsePriceUnits       string    `json:"response_price_units"`
+	YesBid                   Cents     `json:"yes_bid"`
+	YesBidDollars            string    `json:"yes_bid_dollars"`
+	YesAsk                   Cents     `json:"yes_ask"`
+	YesAskDollars            string    `json:"yes_ask_dollars"`
+	NoBid                    Cents     `json:"no_bid"`
+	NoBidDollars             string    `json:"no_bid_dollars"`
+	NoAsk                    Cents     `json:"no_ask"`
+	NoAskDollars             string    `json:"no_ask_dollars"`
+	LastPrice                Cents     `json:"last_price"`
+	LastPriceDollars         string    `json:"last_price_dollars"`
+	PreviousYesBid           Cents     `json:"previous_yes_bid"`
+	PreviousYesBidDollars    string    `json:"previous_yes_bid_dollars"`
+	PreviousYesAsk           Cents     `json:"previous_yes_ask"`
+	PreviousYesAskDollars    string    `json:"previous_yes_ask_dollars"`
+	PreviousPrice            Cents     `json:"previous_price"`
+	PreviousPriceDollars     string    `json:"previous_price_dollars"`
+	Volume                   int       `json:"volume"`
+	VolumeFp                 string    `json:"volume_fp"`
+	Volume24H                int       `json:"volume_24h"`
+	Volume24HFp              string    `json:"volume_24h_fp"`
+	Liquidity                Cents     `json:"liquidity"`
+	LiquidityDollars         string    `json:"liquidity_dollars"`
+	OpenInterest             int       `json:"open_interest"`
+	OpenInterestFp           string    `json:"open_interest_fp"`
+	NotionalValue            Cents     `json:"notional_value"`
+	NotionalValueDollars     string    `json:"notional_value_dollars"`
+	Result                   string    `json:"result"`
+	CanCloseEarly            bool      `json:"can_close_early"`
+	FractionalTradingEnabled bool      `json:"fractional_trading_enabled"`
+	ExpirationValue          string    `json:"expiration_value"`
+	SettlementValue          Cents     `json:"settlement_value"`
+	SettlementValueDollars   string    `json:"settlement_value_dollars"`
+	SettlementTs             time.Time `json:"settlement_ts"`
+	FeeWaiverExpirationTime  time.Time `json:"fee_waiver_expiration_time"`
+	EarlyCloseCondition      string    `json:"early_close_condition"`
+	TickSize                 Cents     `json:"tick_size"`
+	RulesPrimary             string    `json:"rules_primary"`
+	RulesSecondary           string    `json:"rules_secondary"`
+	PriceLevelStructure      string    `json:"price_level_structure"`
+	PriceRanges              []struct {
+		Start string `json:"start"`
+		End   string `json:"end"`
+		Step  string `json:"step"`
+	} `json:"price_ranges"`
+	StrikeType          string         `json:"strike_type"`
+	FloorStrike         float64        `json:"floor_strike,omitempty"`
+	CapStrike           float64        `json:"cap_strike,omitempty"`
+	FunctionalStrike    string         `json:"functional_strike"`
+	CustomStrike        map[string]any `json:"custom_strike"`
+	MveCollectionTicker string         `json:"mve_collection_ticker"`
+	MveSelectedLegs     []struct {
+		EventTicker               string `json:"event_ticker"`
+		MarketTicker              string `json:"market_ticker"`
+		Side                      string `json:"side"`
+		YesSettlementValueDollars string `json:"yes_settlement_value_dollars"`
+	} `json:"mve_selected_legs"`
+	PrimaryParticipantKey string `json:"primary_participant_key"`
+	IsProvisional         bool   `json:"is_provisional"`
+	Category              string `json:"category"`
+	RiskLimit             Cents  `json:"risk_limit_cents"`
 }
 
 func (m *Market) YesMidPrice() Cents {
@@ -185,13 +235,17 @@ func (c *Client) Markets(
 // Trade is described here:
 // https://trading-api.readme.io/reference/gettrades.
 type Trade struct {
-	Count       int       `json:"count"`
-	CreatedTime time.Time `json:"created_time"`
-	NoPrice     Cents     `json:"no_price"`
-	TakerSide   Side      `json:"taker_side"`
-	Ticker      string    `json:"ticker"`
-	TradeID     string    `json:"trade_id"`
-	YesPrice    Cents     `json:"yes_price"`
+	TradeID         string    `json:"trade_id"`
+	Ticker          string    `json:"ticker"`
+	Price           Cents     `json:"price"`
+	Count           int       `json:"count"`
+	CountFp         string    `json:"count_fp"`
+	YesPrice        Cents     `json:"yes_price"`
+	NoPrice         Cents     `json:"no_price"`
+	YesPriceDollars string    `json:"yes_price_dollars"`
+	NoPriceDollars  string    `json:"no_price_dollars"`
+	TakerSide       Side      `json:"taker_side"`
+	CreatedTime     time.Time `json:"created_time"`
 }
 
 // TradesResponse is described here:
@@ -286,7 +340,7 @@ func (c *Client) MarketHistory(
 
 	err := c.request(ctx, request{
 		Method:       "GET",
-		Endpoint:     fmt.Sprintf("markets/%s/history", ticker),
+		Endpoint:     fmt.Sprintf("historical/markets/%s", ticker),
 		QueryParams:  req,
 		JSONResponse: &resp,
 	})
@@ -299,10 +353,8 @@ func (c *Client) MarketHistory(
 
 // MarketOrderBook is described here:
 // https://trading-api.readme.io/reference/getmarketorderbook.
-func (c *Client) MarketOrderBook(ctx context.Context, ticker string) (*OrderBook, error) {
-	var resp struct {
-		OrderBook OrderBook `json:"orderbook"`
-	}
+func (c *Client) MarketOrderBook(ctx context.Context, ticker string) (*MarketOrderBookResponse, error) {
+	var resp MarketOrderBookResponse
 	err := c.request(ctx, request{
 		Method:       "GET",
 		Endpoint:     fmt.Sprintf("markets/%s/orderbook/?depth=100", ticker),
@@ -311,7 +363,7 @@ func (c *Client) MarketOrderBook(ctx context.Context, ticker string) (*OrderBook
 	if err != nil {
 		return nil, err
 	}
-	return &resp.OrderBook, nil
+	return &resp, nil
 }
 
 // Series is described here:
@@ -337,4 +389,80 @@ func (c *Client) Series(ctx context.Context, seriesTicker string) (*Series, erro
 		return nil, err
 	}
 	return &resp.Series, nil
+}
+
+// GetMarketCandlesticksRequest is described here:
+// https://docs.kalshi.com/api-reference/market/get-market-candlesticks.
+type GetMarketCandlesticksRequest struct {
+	SeriesTicker             string `url:"-"`
+	Ticker                   string `url:"-"`
+	StartTs                  int64  `url:"start_ts,omitempty"`
+	EndTs                    int64  `url:"end_ts,omitempty"`
+	PeriodInterval           int    `url:"period_interval,omitempty"`
+	IncludeLatestBeforeStart bool   `url:"include_latest_before_start,omitempty"`
+}
+
+// Ohlc represents Open, High, Low, Close values.
+type Ohlc struct {
+	Open         int64  `json:"open"`
+	OpenDollars  string `json:"open_dollars"`
+	Low          int64  `json:"low"`
+	LowDollars   string `json:"low_dollars"`
+	High         int64  `json:"high"`
+	HighDollars  string `json:"high_dollars"`
+	Close        int64  `json:"close"`
+	CloseDollars string `json:"close_dollars"`
+}
+
+// OhlcExtended represents extended OHLC values including Mean, Previous, Min, Max.
+type OhlcExtended struct {
+	Ohlc
+	Mean            int64  `json:"mean"`
+	MeanDollars     string `json:"mean_dollars"`
+	Previous        int64  `json:"previous"`
+	PreviousDollars string `json:"previous_dollars"`
+	Min             int64  `json:"min"`
+	MinDollars      string `json:"min_dollars"`
+	Max             int64  `json:"max"`
+	MaxDollars      string `json:"max_dollars"`
+}
+
+// Candlestick represents a single candlestick data point.
+type Candlestick struct {
+	EndPeriodTs    int64        `json:"end_period_ts"`
+	YesBid         Ohlc         `json:"yes_bid"`
+	YesAsk         Ohlc         `json:"yes_ask"`
+	Price          OhlcExtended `json:"price"`
+	Volume         int64        `json:"volume"`
+	VolumeFp       string       `json:"volume_fp"`
+	OpenInterest   int64        `json:"open_interest"`
+	OpenInterestFp string       `json:"open_interest_fp"`
+}
+
+// GetMarketCandlesticksResponse is described here:
+// https://docs.kalshi.com/api-reference/market/get-market-candlesticks.
+type GetMarketCandlesticksResponse struct {
+	Ticker       string        `json:"ticker"`
+	Candlesticks []Candlestick `json:"candlesticks"`
+}
+
+// GetMarketCandlesticks is described here:
+// https://docs.kalshi.com/api-reference/market/get-market-candlesticks.
+func (c *Client) GetMarketCandlesticks(
+	ctx context.Context,
+	req GetMarketCandlesticksRequest,
+) (*GetMarketCandlesticksResponse, error) {
+	var resp GetMarketCandlesticksResponse
+
+	err := c.request(ctx, request{
+		Method:       "GET",
+		Endpoint:     fmt.Sprintf("series/%s/markets/%s/candlesticks", req.SeriesTicker, req.Ticker),
+		QueryParams:  req,
+		JSONResponse: &resp,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
