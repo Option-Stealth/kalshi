@@ -375,20 +375,20 @@ type SettlementSource struct {
 // Series is described here:
 // https://trading-api.readme.io/reference/getseries.
 type Series struct {
-	Ticker                string             `json:"ticker"`
-	Frequency             string             `json:"frequency"`
-	Title                 string             `json:"title"`
-	Category              string             `json:"category"`
-	Tags                  []string           `json:"tags"`
-	SettlementSources     []SettlementSource `json:"settlement_sources"`
-	ContractURL           string             `json:"contract_url"`
-	ContractTermsURL      string             `json:"contract_terms_url"`
-	FeeType               string             `json:"fee_type"`
-	FeeMultiplier         int                `json:"fee_multiplier"`
-	AdditionalProhibitions []string          `json:"additional_prohibitions"`
-	ProductMetadata       map[string]any     `json:"product_metadata"`
-	Volume                int                `json:"volume"`
-	VolumeFp              string             `json:"volume_fp"`
+	Ticker                 string             `json:"ticker"`
+	Frequency              string             `json:"frequency"`
+	Title                  string             `json:"title"`
+	Category               string             `json:"category"`
+	Tags                   []string           `json:"tags"`
+	SettlementSources      []SettlementSource `json:"settlement_sources"`
+	ContractURL            string             `json:"contract_url"`
+	ContractTermsURL       string             `json:"contract_terms_url"`
+	FeeType                string             `json:"fee_type"`
+	FeeMultiplier          float64            `json:"fee_multiplier"`
+	AdditionalProhibitions []string           `json:"additional_prohibitions"`
+	ProductMetadata        map[string]any     `json:"product_metadata"`
+	Volume                 int                `json:"volume"`
+	VolumeFp               string             `json:"volume_fp"`
 }
 
 // ListSeriesRequest is described here:
